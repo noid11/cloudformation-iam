@@ -1,0 +1,48 @@
+Resources:
+
+  MyUserSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        GenerateStringKey: password
+        PasswordLength: 32
+        SecretStringTemplate: '{}'
+
+  MyUser:
+    Type: AWS::IAM::User
+    Properties: 
+      LoginProfile: 
+        Password: !Sub '{{resolve:secretsmanager:${MyUserSecret}:SecretString:password::}}'
+        PasswordResetRequired: False
+
+  MyPolicy:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument: 
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'ec2:DescribeRegions'
+            Resource: '*'
+          - Effect: Deny
+            Action:
+              - 'ec2:DescribeAvailabilityZones'
+            Resource: '*'
+      PolicyName: 'mypolicy'
+      Users: 
+        - !Ref MyUser
+
+  MyAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties: 
+      UserName: !Ref MyUser
+
+
+Outputs:
+  GetSecretValueByCLI:
+    Value: !Sub aws --region ${AWS::Region} secretsmanager get-secret-value --secret-id ${MyUserSecret} --query SecretString
+  IAMUserAccessKey:
+    Value: !Ref MyAccessKey
+  IAMUserSecretKey:
+    Value: !GetAtt MyAccessKey.SecretAccessKey
